@@ -6,6 +6,8 @@ import (
     "log"
 
     "LaFinale/pkg/db"
+    "LaFinale/pkg/api"
+    _ "modernc.org/sqlite"
 )
 
 func main() {
@@ -13,6 +15,9 @@ func main() {
 if err != nil {
 	log.Fatal(err)
 }
+
+    api.Init()
+
     dir := "web"
 
     port := os.Getenv("TODO_PORT")
