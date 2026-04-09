@@ -11,7 +11,7 @@ import (
 
 const dateFormat = "20060102"
 
-func afterNow(date, now time.Time) bool {
+func afterNow(date, now time.Time) bool { //Во избежание проблем с часовыми поясами. Вычисление конкретно по дню
     dateDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
     nowDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
     
@@ -31,6 +31,8 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 
     parts := strings.Split(repeat, " ")
 
+    //повторение по дням, дням недели, дням месяца,ежегодно
+    //d, w, m, y - день, неделя, месяц, год соответственно
     switch parts[0] {
 
     case "d":
@@ -42,7 +44,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
     case "m":
     return nextMonth(now, date, parts)
     
-    case "y":
+    case "y": //Простое вычсление, в отдельную функцию выносить бессмысленно
     for {
         date = date.AddDate(1, 0, 0)
         if afterNow(date, now) {
@@ -66,7 +68,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
         }
         for {
             date = date.AddDate(0, 0, days)
-            if date.After(now) {
+            if afterNow(date, now) { 
                 return date.Format(dateFormat), nil
             }
         }
@@ -82,19 +84,19 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
             return "", errors.New("invalid w format")
         }
 
-        valid := make(map[int]bool)
+        valid := make(map[int]bool) //Для быстроты поиска
         for _, d := range days {
             if d < 1 || d > 7 {
                 return "", errors.New("invalid w format")
             }
             valid[d] = true
         }
-        for i := 1; i <= 730; i++ {
+        for i := 1; i <= 730; i++ { //730 - примерно 2 года, для избежания бесконечного цикла
             d := start.AddDate(0, 0, i)
     
-            if d.After(now) {
+            if afterNow(d, now) {
                 wd := int(d.Weekday())
-                if wd == 0 {
+                if wd == 0 { //адаптация Sunday под российские реалии 
                     wd = 7
                 }
                 if valid[wd] {
@@ -115,7 +117,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
         if days == nil {
             return "", errors.New("invalid m format")
         }
-        negative := []int{}
+        negative := []int{} //для "отрицательных" дней (последние в месяце, например)
         
         for _, d := range days {
             if d == 0 || d < -31 || d > 31 {
@@ -125,7 +127,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
                 negative = append(negative, d)
             }
         }
-        if len(negative) == 2 {
+        if len(negative) == 2 { //одно из отрицательных чисел должно быть -1
             minusOne := false
             for _, d := range negative {
                 if d == -1 {
@@ -153,7 +155,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
                 }
             }
         }
-        for i := 0; i <= 24; i++ {
+        for i := 0; i <= 24; i++ {  //ограничение в 2 года, как с днями
             cur := start.AddDate(0, i, 0)
             if len(months) > 0 {
                 monthOk := false
@@ -176,28 +178,21 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
                 if d > 0 {
                     day = d
                 } else {
-                    day = lastDay + d + 1
+                    day = lastDay + d + 1 //отрицательные считаем от конца, тк это последние дни месяца (см выше)
                 }
                 
                 if day < 1 || day > lastDay {
                     continue
                 }
                 
-                cand := time.Date(
-                    cur.Year(),
-                    cur.Month(),
-                    day,
-                    0, 0, 0, 0,
-                    time.UTC,
-                )
-                
+                cand := time.Date(cur.Year(), cur.Month(), day, 0, 0, 0, 0, time.UTC) 
                 if cand.After(now) {
                     maybe = append(maybe, cand)
                 }
             }
     
-            if len(maybe) > 0 {
-                nrb := maybe[0]
+            if len(maybe) > 0 { 
+                nrb := maybe[0] //nrb = nearby 
                 for _, c := range maybe {
                     if c.Before(nrb) {
                         nrb = c
@@ -210,7 +205,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
         return "", errors.New("no date found")
     }
     
-    func parseInts(s string) []int {
+    func parseInts(s string) []int { 
         parts := strings.Split(s, ",")
         var res []int
     
@@ -230,27 +225,30 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
     }
 
     func nextDateHandler(w http.ResponseWriter, r *http.Request) {
-    nowStr := r.FormValue("now")
-    dateStr := r.FormValue("date")
-    repeat := r.FormValue("repeat")
-
-    var now time.Time
-    var err error
-
-    if nowStr == "" {
-        now = time.Now()
-    } else {
-        now, err = time.Parse(dateFormat, nowStr)
+        nowStr := r.FormValue("now")
+        dateStr := r.FormValue("date")
+        repeat := r.FormValue("repeat")
+    
+        var now time.Time
+        var err error
+    
+        if nowStr == "" {
+            now = time.Now()
+        } else {
+            now, err = time.Parse(dateFormat, nowStr)
+            if err != nil {
+                writeError(w, err)
+                return
+            }
+        }
+    
+        result, err := NextDate(now, dateStr, repeat)
         if err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
+            writeError(w, err)
             return
         }
+    
+        writeJSON(w, map[string]string{
+            "date": result,
+        })
     }
-
-    result, err := NextDate(now, dateStr, repeat)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
-    w.Write([]byte(result))
-}

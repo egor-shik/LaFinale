@@ -7,8 +7,7 @@ import (
 _ "modernc.org/sqlite"
 )
 
-var db *sql.DB
-//вроде ок, но мог накосячить
+var DB *sql.DB
 const schema = `
 CREATE TABLE scheduler (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,10 +33,10 @@ func Init(dbFile string) error {
 			return err
 		}
 
-	db = dBase
+	DB = dBase
 
 	if install {
-		_, err = db.Exec(schema)
+		_, err = DB.Exec(schema)
 		if err != nil {
 			return err
 		}
