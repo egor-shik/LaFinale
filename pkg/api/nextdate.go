@@ -79,13 +79,13 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
             return "", errors.New("invalid w format")
         }
 
-        days := parseInts(parts[1])
-        if days == nil {
+        weekDays := parseInts(parts[1])
+        if weekDays == nil {
             return "", errors.New("invalid w format")
         }
 
         valid := make(map[int]bool) //Для быстроты поиска
-        for _, d := range days {
+        for _, d := range weekDays {
             if d < 1 || d > 7 {
                 return "", errors.New("invalid w format")
             }
@@ -113,13 +113,13 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
             return "", errors.New("invalid m format")
         }
     
-        days := parseInts(parts[1])
-        if days == nil {
+        monthDays := parseInts(parts[1])
+        if monthDays == nil {
             return "", errors.New("invalid m format")
         }
         negative := []int{} //для "отрицательных" дней (последние в месяце, например)
         
-        for _, d := range days {
+        for _, d := range monthDays {
             if d == 0 || d < -31 || d > 31 {
                 return "", errors.New("invalid m format")
             }
@@ -127,7 +127,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
                 negative = append(negative, d)
             }
         }
-        if len(negative) == 2 { //одно из отрицательных чисел должно быть -1
+        if len(negative) == 2 { //одно из отрицательных чисел должно быть -1 по условию
             minusOne := false
             for _, d := range negative {
                 if d == -1 {
@@ -156,7 +156,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
             }
         }
         for i := 0; i <= 24; i++ {  //ограничение в 2 года, как с днями
-            cur := start.AddDate(0, i, 0)
+            cur := start.AddDate(0, i, 0) //cur = current
             if len(months) > 0 {
                 monthOk := false
                 for _, m := range months {
@@ -173,7 +173,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
             lastDay := lastDayOfMonth(cur)
             var maybe []time.Time
     
-            for _, d := range days {
+            for _, d := range monthDays {
                 var day int
                 if d > 0 {
                     day = d
@@ -206,10 +206,10 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
     }
     
     func parseInts(s string) []int { 
-        parts := strings.Split(s, ",")
+        chunks := strings.Split(s, ",") //в пред. версиях "parts", заменил, чтобы не плодить много одинаковых по названию переменных
         var res []int
     
-        for _, p := range parts {
+        for _, p := range chunks {
             n, err := strconv.Atoi(strings.TrimSpace(p))
             if err != nil {
                 return nil 
@@ -248,7 +248,5 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
             return
         }
     
-        writeJSON(w, map[string]string{
-            "date": result,
-        })
+        w.Write([]byte(result))
     }
