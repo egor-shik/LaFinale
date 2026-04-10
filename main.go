@@ -1,34 +1,36 @@
-package main 
+package main
 
 import (
-    "os"
-    "net/http"
-    "log"
+	"log"
+	"net/http"
+	"os"
 
-    "LaFinale/pkg/db"
-    "LaFinale/pkg/api"
-    _ "modernc.org/sqlite"
+	"LaFinale/pkg/api"
+	"LaFinale/pkg/db"
+
+	_ "modernc.org/sqlite"
 )
 
 func main() {
-    err := db.Init("scheduler.db")
-if err != nil {
-	log.Fatal(err)
-}
+	err := db.Init("scheduler.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.DB.Close()
 
-    api.Init()
+	api.Init()
 
-    dir := "web"
+	dir := "web"
 
-    port := os.Getenv("TODO_PORT")
-    if port == "" {
-        port = "7540"
-    }
-http.Handle ("/", http.FileServer(http.Dir(dir)))
-log.Printf("Server started on http://localhost:%s", port)
-    err = http.ListenAndServe(":"+port, nil)
-    if err != nil {
-        log.Fatal(err)
-    }
+	port := os.Getenv("TODO_PORT")
+	if port == "" {
+		port = "7540"
+	}
+	http.Handle("/", http.FileServer(http.Dir(dir)))
+	log.Printf("Server started on http://localhost:%s", port)
+	err = http.ListenAndServe(":"+port, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 }

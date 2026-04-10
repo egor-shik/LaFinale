@@ -2,11 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
-	"time"
 	"strings"
-	"errors"
+	"time"
 
 	"LaFinale/pkg/db"
 )
@@ -55,7 +55,7 @@ func checkDate(task *db.Task) error {
 		return errors.New("unsupported repeat format")
 	}
 
-	if strings.HasPrefix(task.Repeat, "d ") || task.Repeat == "y" {   //Проверка на подсчет даты 
+	if strings.HasPrefix(task.Repeat, "d ") || task.Repeat == "y" { //Проверка на подсчет даты
 		_, err := NextDate(now, task.Date, task.Repeat)
 		if err != nil {
 			return err

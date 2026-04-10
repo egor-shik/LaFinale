@@ -6,6 +6,8 @@ import (
 	"fmt"
 )
 
+const taskLimit = 50
+
 type Task struct {
 	ID      string `json:"id"`
 	Date    string `json:"date"`
@@ -13,7 +15,7 @@ type Task struct {
 	Comment string `json:"comment"`
 	Repeat  string `json:"repeat"`
 }
- 
+
 func AddTask(task *Task) (int64, error) { //Задача отправляется в базу. Возвращается id новой записи
 	query := `
 	INSERT INTO scheduler (date, title, comment, repeat)
@@ -35,7 +37,7 @@ func GetTask(id string) (*Task, error) {
 	WHERE id = ?
 	`
 
-	var tmp Task 		//для разнообразия переменных в разных функциях 
+	tmp := &Task{}
 
 	err := DB.QueryRow(query, id).Scan(
 		&tmp.ID,
@@ -52,7 +54,7 @@ func GetTask(id string) (*Task, error) {
 		return nil, err
 	}
 
-	return &tmp, nil
+	return tmp, nil
 }
 
 func UpdateTask(task *Task) error {
@@ -97,7 +99,7 @@ func UpdateDate(next string, id string) error {
 	}
 
 	if udcount == 0 {
-		return fmt.Errorf("Task os not found")
+		return fmt.Errorf("Task is not found")
 	}
 
 	return nil
@@ -125,39 +127,39 @@ func DeleteTask(id string) error {
 
 func Tasks(limit int) ([]*Task, error) {
 	if limit <= 0 {
-		limit = 50   // лимит. чтобы уйти от странных значений
+		limit = taskLimit
 	}
-		rows, err := DB.Query(`
+	rows, err := DB.Query(`
 			SELECT id, date, title, comment, repeat
 			FROM scheduler
 			ORDER BY date
 			LIMIT ?
 		`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tasks := make([]*Task, 0, limit)
+
+	for rows.Next() {
+		var t Task
+		err := rows.Scan(
+			&t.ID,
+			&t.Date,
+			&t.Title,
+			&t.Comment,
+			&t.Repeat,
+		)
 		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-	
-		tasks := make([]*Task, 0, limit)
-	
-		for rows.Next() {
-			var t Task
-			err := rows.Scan(
-				&t.ID,
-				&t.Date,
-				&t.Title,
-				&t.Comment,
-				&t.Repeat,
-			)
-			if err != nil {
-				return nil, fmt.Errorf("scan task: %w", err)
-		}
-	
-			tasks = append(tasks, &t)
+			return nil, fmt.Errorf("scan task: %w", err)
 		}
 
-		if err := rows.Err(); err != nil {
-			return nil, fmt.Errorf("iterate tasks: %w", err)
-		}
-		return tasks, nil
+		tasks = append(tasks, &t)
 	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate tasks: %w", err)
+	}
+	return tasks, nil
+}

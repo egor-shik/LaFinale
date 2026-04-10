@@ -1,14 +1,15 @@
 package db
 
 import (
-"database/sql"
-"os"
-"fmt" 
+	"database/sql"
+	"fmt"
+	"os"
 
-_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite"
 )
 
 var DB *sql.DB
+
 const schema = `
 CREATE TABLE scheduler (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,15 +31,16 @@ func Init(dbFile string) error {
 	}
 
 	dBase, err := sql.Open("sqlite", dbFile)
-		if err != nil {
-			return fmt.Errorf("init db error")
-		}
+	if err != nil {
+		return fmt.Errorf("init db error")
+	}
 
 	DB = dBase
 
 	if install {
 		_, err = DB.Exec(schema)
 		if err != nil {
+			dBase.Close()
 			return fmt.Errorf("init db error")
 		}
 	}

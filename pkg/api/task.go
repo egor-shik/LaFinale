@@ -8,7 +8,7 @@ import (
 	"LaFinale/pkg/db"
 )
 
-func taskHandler(w http.ResponseWriter, r *http.Request) { 
+func taskHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 
 	case http.MethodGet:
@@ -24,57 +24,60 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 		deleteTaskHandler(w, r)
 
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, errors.New("method not allowed"), http.StatusMethodNotAllowed)
 	}
 }
 
 func getTaskHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeError(w, errors.New("id is not specified"))
+		writeError(w, errors.New("id is not specified"), http.StatusBadRequest)
 		return
 	}
+
 	task, err := db.GetTask(id)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, err, http.StatusNotFound)
 		return
 	}
+
 	writeJSON(w, task)
 }
 
 func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		writeError(w, errors.New("empty body"), http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
 	var task db.Task
 
 	err := json.NewDecoder(r.Body).Decode(&task)
-	if r.Body == nil {
-		writeError(w, errors.New("empty body"))
-		return
-	}
-
 	if err != nil {
-		writeError(w, err)
+		writeError(w, err, http.StatusBadRequest)
 		return
 	}
 
 	if task.ID == "" {
-		writeError(w, errors.New("id is not specified"))
+		writeError(w, errors.New("id is not specified"), http.StatusBadRequest)
 		return
 	}
 
 	if task.Title == "" {
-		writeError(w, errors.New("Title is not specified"))  //*Была ошибка, речь о title, разумеется
+		writeError(w, errors.New("title is not specified"), http.StatusBadRequest)
 		return
 	}
 
 	err = checkDate(&task)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, err, http.StatusBadRequest)
 		return
 	}
 
 	err = db.UpdateTask(&task)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, err, http.StatusNotFound)
 		return
 	}
 
@@ -84,13 +87,13 @@ func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
 func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeError(w, errors.New("id is not specified"))
+		writeError(w, errors.New("id is not specified"), http.StatusBadRequest)
 		return
 	}
 
 	err := db.DeleteTask(id)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, err, http.StatusNotFound)
 		return
 	}
 

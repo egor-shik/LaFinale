@@ -2,17 +2,20 @@ package api
 
 import (
 	"net/http"
+
 	"LaFinale/pkg/db"
 )
+
+const defaultTasksLimit = 50
 
 type TasksResp struct {
 	Tasks []*db.Task `json:"tasks"`
 }
 
-func tasksHandler(w http.ResponseWriter, r *http.Request) { //отдача списка задач
-	tasks, err := db.Tasks(50)
+func tasksHandler(w http.ResponseWriter, r *http.Request) {
+	tasks, err := db.Tasks(defaultTasksLimit)
 	if err != nil {
-		writeError(w, err)
+		writeError(w, err, http.StatusInternalServerError)
 		return
 	}
 
